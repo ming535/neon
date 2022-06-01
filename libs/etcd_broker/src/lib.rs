@@ -219,7 +219,7 @@ pub async fn subscribe_to_safekeeper_timeline_updates(
             "Failed to get messages from the subscription stream, kind: {subscription_kind:?}, error: {e}"
         )))? {
             if resp.canceled() {
-                info!("Watch for timeline updates subscription was canceled, exiting");
+                info!("Watch for timeline updates subscription was cancelled, exiting");
                 break;
             }
 
@@ -231,7 +231,7 @@ pub async fn subscribe_to_safekeeper_timeline_updates(
 
 
             let events = resp.events();
-            debug!("Processing {} events", events.len());
+            info!("Processing {} events", events.len());
 
             for event in events {
                 if EventType::Put == event.event_type() {
@@ -248,20 +248,28 @@ pub async fn subscribe_to_safekeeper_timeline_updates(
                                     hash_map::Entry::Occupied(mut o) => {
                                         let old_etcd_kv_version = timeline_etcd_versions.get(&zttid).copied().unwrap_or(i64::MIN);
                                         if old_etcd_kv_version < new_kv_version {
+                                            info!("Accepted newer event {new_etcd_kv:?}");
                                             o.insert(timeline.info);
                                             timeline_etcd_versions.insert(zttid,new_kv_version);
+                                        } else {
+                                            warn!("Rejected older event {new_etcd_kv:?}, new one: {:?}", o.get());
                                         }
                                     }
                                     hash_map::Entry::Vacant(v) => {
+                                        info!("Accepted event {new_etcd_kv:?}");
                                         v.insert(timeline.info);
                                         timeline_etcd_versions.insert(zttid,new_kv_version);
                                     }
                                 }
                             }
-                            Ok(None) => {}
+                            Ok(None) => warn!("Failed to parse kv: {new_etcd_kv:?}"),
                             Err(e) => error!("Failed to parse timeline update: {e}"),
                         };
+                    } else {
+                        warn!("Rejected a non-kv event {event:?}");
                     }
+                } else {
+                    warn!("Rejected a non-PUT event {event:?}");
                 }
             }
 
@@ -272,7 +280,7 @@ pub async fn subscribe_to_safekeeper_timeline_updates(
         }
 
         Ok(())
-    });
+    }.instrument(info_span!("etcd_broker")));
 
     Ok(SkTimelineSubscription {
         kind: subscription,
@@ -287,6 +295,12 @@ fn parse_etcd_key_value(
     regex: &Regex,
     kv: &KeyValue,
 ) -> Result<Option<(ZTenantTimelineId, SafekeeperTimeline)>, BrokerError> {
+    info!(
+        "Parsing kv {kv:?} (key_str: '{:?}', value_str: '{:?}') with regex {regex}",
+        kv.key_str(),
+        kv.value_str(),
+    );
+
     let caps = if let Some(caps) = regex.captures(kv.key_str().map_err(|e| {
         BrokerError::EtcdClient(e, format!("Failed to represent kv {kv:?} as key str"))
     })?) {
