@@ -497,7 +497,7 @@ class ZenithEnvBuilder:
                  remote_storage_users: RemoteStorageUsers = RemoteStorageUsers.PAGESERVER,
                  pageserver_config_override: Optional[str] = None,
                  num_safekeepers: int = 1,
-                 pageserver_auth_enabled: bool = False,
+                 auth_enabled: bool = False,
                  rust_log_override: Optional[str] = None,
                  default_branch_name=DEFAULT_BRANCH_NAME):
         self.repo_dir = repo_dir
@@ -509,7 +509,7 @@ class ZenithEnvBuilder:
         self.mock_s3_server = mock_s3_server
         self.pageserver_config_override = pageserver_config_override
         self.num_safekeepers = num_safekeepers
-        self.pageserver_auth_enabled = pageserver_auth_enabled
+        self.auth_enabled = auth_enabled
         self.default_branch_name = default_branch_name
         self.env: Optional[ZenithEnv] = None
 
@@ -635,7 +635,7 @@ class ZenithEnv:
             pg=self.port_distributor.get_port(),
             http=self.port_distributor.get_port(),
         )
-        pageserver_auth_type = "ZenithJWT" if config.pageserver_auth_enabled else "Trust"
+        pageserver_auth_type = "ZenithJWT" if config.auth_enabled else "Trust"
 
         toml += textwrap.dedent(f"""
             [pageserver]

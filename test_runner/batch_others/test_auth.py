@@ -7,7 +7,7 @@ import pytest
 
 
 def test_pageserver_auth(zenith_env_builder: ZenithEnvBuilder):
-    zenith_env_builder.pageserver_auth_enabled = True
+    zenith_env_builder.auth_enabled = True
     env = zenith_env_builder.init_start()
 
     ps = env.pageserver
@@ -54,7 +54,7 @@ def test_pageserver_auth(zenith_env_builder: ZenithEnvBuilder):
 
 @pytest.mark.parametrize('with_safekeepers', [False, True])
 def test_compute_auth_to_pageserver(zenith_env_builder: ZenithEnvBuilder, with_safekeepers: bool):
-    zenith_env_builder.pageserver_auth_enabled = True
+    zenith_env_builder.auth_enabled = True
     if with_safekeepers:
         zenith_env_builder.num_safekeepers = 3
     env = zenith_env_builder.init_start()
